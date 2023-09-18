@@ -16,6 +16,7 @@ library("xlsx")
 Compiled <- read.xlsx(file.choose(), 1)
 
 library(agricolae)
+library(agricolae)
 library(xtable)
 sspdata <- read.csv("C:/Users/mujjabi2/Desktop/THESIS ANALYSIS/Replicated Trial Analysis/Compiled.csv") # path of data on my computer
 
@@ -291,7 +292,7 @@ comparison <- scheffe.test(model,"FAR", group=TRUE,console=TRUE,
 ##ANALYSIS OF REPLICATED TRIAL ###############ANALYSIS OF REPLICATED TRIAL ##############ANALYSIS OF REPLICATED TRIAL #############
 #ANALYSIS OF REPLICATED TRIAL ##############ANALYSIS OF REPLICATED TRIAL ##############ANALYSIS OF REPLICATED TRIAL #############
 
-Compiled <- read.csv("Compiled.csv", header = TRUE)
+Compiled <- read.csv("Compiled.Data.csv", header = TRUE)
 
 
 Compiled$EXP <- as.factor(Compiled$EXP)
@@ -976,9 +977,7 @@ labs(title="Hybrid Response to Weed Pressure",
 
 
 
-
-
-
+print("Hello world", quote = FALSE)
 
 
 
