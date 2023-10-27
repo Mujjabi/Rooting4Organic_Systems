@@ -15,17 +15,13 @@ library(agricolae)
 library(xtable)
 Compiled <- read.csv("Compiled_Data.csv", header = TRUE)
 Compiled <- type.convert(replace(Compiled, Compiled == "." & !is.na(Compiled), NA), as.is = TRUE)
-
 View(Compiled)
 
 ## Converting Yield from Bu/Acre to Kg/ha
 
 Compiled$YIELD <-Compiled$YIELD*67.25
-
-
 min(Compiled$YIELD, na.rm = TRUE)
 max(Compiled$YIELD, na.rm = TRUE)
-
 
 ## Settings design and response variables
 
@@ -82,38 +78,37 @@ Compiled$POMCN <- as.numeric(Compiled$POMCN)
 Compiled$PMN <- as.numeric(Compiled$PMN)
 Compiled$POXC <- as.numeric(Compiled$POXC)
 
+colSums(is.na(Compiled))
 ## Trait distribution
 library(ggplot2)
 ggplot(Compiled, aes(x = YIELD, fill = LOC)) +
-geom_histogram(alpha = 0.8, position = "identity") +
+geom_histogram(alpha = 0.8, position = "identity", na.rm = TRUE) +
 scale_fill_hue(labels = c("Pana", "Macomb", "UIUC2019", "UIUC2020"))
 
 
+ggplot(data=Compiled, aes(x = NITRO, y = PHT, group = HYB)+
+geom_line(size=2, aes(color=HYB), na.rm = TRUE)+
+ylab("Yield")+
+xlab("Nitrogen Level")+
+ggtitle("Nitrogen Levelas Predictors of Yield")+
+theme_bw()+ 
+theme(panel.grid.major=element_blank(),                     
+      panel.grid.minor=element_blank())+
+scale_fill_grey())
 
 
-
-library(ggplot2)
-Plot<-ggplot(data=Compiled, aes(x = LOC, y = YIELD, group = HYB)+
-               geom_line(size=2, aes(color=HYB))+
-               ylab("Yield")+
-               xlab("Nitrogen Level")+
-               ggtitle("Nitrogen Levelas Predictors of Yield")+
-               theme_bw()+ 
-               theme(panel.grid.major=element_blank(),
-                     panel.grid.minor=element_blank())+
-               scale_fill_grey())
-Plot
 
 
 ################PLOTTING CORRELATIONG##############
 library(car)
 library(corrplot)
-Correlation <- cor(Compiled[,c(17:34)], use = "pairwise.complete.obs")
-corrplot(Correlation,method = "circle",type="upper", order="hclust", #Type = upper,lower, #method=circle,pie,color,number
+Correlation <- cor(Compiled[,c(17:35)], use = "pairwise.complete.obs")
+corrplot(Correlation,method = "color",type="upper", order="hclust", #Type = upper,lower, #method=circle,pie,color,number
            addCoef.col="black", # Add coefficient of correlation
          diag=FALSE, # hide correlation coefficient on the principal diagonal
          tl.col="black", tl.srt=45, #Text label color and rotation
          p.mat=NULL, sig.level = 0.01, insig = "blank")  # Add coefficient of correlation
+
 
 Correlation <- cor(Compiled[,c(17:60)], use = "pairwise.complete.obs")
 corrplot(Correlation, method = "circle", type="upper", order="original", na.label=" ",#Type = upper,lower, #method=circle,pie,color,number
@@ -121,4 +116,3 @@ corrplot(Correlation, method = "circle", type="upper", order="original", na.labe
          diag=FALSE, # hide correlation coefficient on the principal diagonal
          tl.col="black", tl.srt=45, #Text label color and rotation
          p.mat=NULL, sig.level = 0.01, insig = "blank")  # Add coefficient of correlation
-corrplot(Correlation)
