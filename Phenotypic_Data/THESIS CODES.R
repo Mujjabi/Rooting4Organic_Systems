@@ -16,7 +16,6 @@ library("xlsx")
 Compiled <- read.xlsx(file.choose(), 1)
 
 library(agricolae)
-library(agricolae)
 library(xtable)
 sspdata <- read.csv("C:/Users/mujjabi2/Desktop/THESIS ANALYSIS/Replicated Trial Analysis/Compiled.csv") # path of data on my computer
 

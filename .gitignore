@@ -4,4 +4,11 @@
 .Ruserdata
 Manuscript.md
 Compiled_Data.csv
+Phenotypic_Data/Old_Analysises/*.csv
+Phenotypic_Data/Old_Analysises/*.xlsx
+Phenotypic_Data/Combined_Agro-Edaphic_Data/*.csv
+Phenotypic_Data/Combined_Agro-Edaphic_Data/*.xlsx
+2023ASA_CSSA_Poster_Analysis/*.csv
+2023ASA_CSSA_Poster_Analysis/*.xlsx
+
 

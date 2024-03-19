@@ -8,11 +8,13 @@ rm(list=ls(all=TRUE))
 graphics.off()
 shell("cls")  ############CLEAR ALL PREVIOUS OBJECT, VALUES, GRAPHICS AND WINDOWS###########
 
+#https://stat.ethz.ch/education/semesters/as2015/anova/08_Split_Plots.pdf
 ## Replicated Trial Data Analysis
 setwd("C:/Users/mujjabi2/OneDrive - University of Illinois - Urbana/General/GitHub_Repositories/OREI_Controlled_Experiment/Phenotypic_Data")
 
 library(agricolae)
 library(xtable)
+
 Compiled <- read.csv("Compiled_Data.csv", header = TRUE)
 Compiled <- type.convert(replace(Compiled, Compiled == "." & !is.na(Compiled), NA), as.is = TRUE)
 
@@ -22,6 +24,7 @@ Compiled <- type.convert(replace(Compiled, Compiled == "." & !is.na(Compiled), N
 Compiled$YIELD <-Compiled$YIELD*67.25
 min(Compiled$YIELD, na.rm = TRUE)
 max(Compiled$YIELD, na.rm = TRUE)
+
 
 ## Settings design and response variables
 
@@ -80,7 +83,14 @@ Compiled$POXC <- as.numeric(Compiled$POXC)
 
 
 Compiled2 <- Compiled[c(2,3,7:11,19:21, 24:27,29:34)]
-colSums(is.na(Compiled2))  # Shows number of empty rows per column
+Compiled2 <- Compiled2[complete.cases(Compiled2),]   #removes all missing, including 2020
+colSums(is.na(Compiled2))  # Shows number of empty rows per column   
+
+##Imputing missing data using mL
+#install.packages("missForest")
+library(missForest)
+Impdata <- missForest(Compiled2)
+
 
 
 ## Correlation between root and agronomic traits. 
@@ -97,7 +107,7 @@ Data2020 <- subset(ALL, YEAR=="2020")
 
 
 ALL2 <-ALL[,c(1:12,15:20)]
-ALL2 <- ALL2[complete.cases(ALL2),]
+ALL2 <- ALL2[complete.cases(ALL2)]
 
 Data1819 <- Data1819[complete.cases(Data1819),] 
 
@@ -107,7 +117,7 @@ Data2020  <- Data2020[complete.cases(Data2020),]
 
 library(car)
 library(corrplot)
-Correlation <- cor(ALL2[,c(8:17)], use = "pairwise.complete.obs")
+Correlation <- cor(ALL, use = "pairwise.complete.obs")
 corrplot(Correlation,method = "color",type="upper", order="hclust", #Type = upper,lower, #method=circle,pie,color,number
          addCoef.col="black", # Add coefficient of correlation
          diag=FALSE, # hide correlation coefficient on the principal diagonal
@@ -433,6 +443,166 @@ out10<-with(data=Selected_HYB,LSD.test(RTA,NITRO,gla,Ea,console=TRUE,alpha = 0.0
 out11<-with(data=Selected_HYB,LSD.test(RTA,HYB:NITRO,glb,Eb,console=TRUE,alpha = 0.05,  p.adj = "bonferroni"))
 out111<-with(data=Selected_HYB,LSD.test(RTA,HYB:WEED,glb,Ec,console=TRUE,alpha = 0.05,  p.adj = "bonferroni"))
 out12<-with(data=Selected_HYB,LSD.test(RTA,WEED,glc,Ec,console=TRUE,alpha = 0.05,  p.adj = "bonferroni"))
+
+
+## Using AsReml
+
+#Eliminating 2020 dataset
+
+Data1819 <- subset(Compiled, YEAR %in% c("2018","2019"))
+
+
+# 1. Yield estimates 
+
+library(asreml)
+
+model.asreml.yld <- asreml(fixed = YIELD ~ NITRO + HYB + NITRO:HYB + WEED + NITRO:WEED + HYB:WEED + NITRO:HYB:WEED,
+                       random = ~YEAR + LOC + REP + YEAR:LOC:REP,
+                       residual = ~units,
+                       ai.sing = TRUE,
+                       data = Compiled)
+plot(model.asreml.yld)
+summary(model.asreml.yld)$varcomp
+wald(model.asreml.yld)
+
+model.wld.yld <- wald(model.asreml.yld, denDF = "default")
+model.wld.yld$Wald
+model.wld.yld$stratumVariances
+
+## Predicting Performance
+
+Nitro.pv.yld <- predict(model.asreml.yld, classify = "NITRO", sed = TRUE)
+Hyb.pv.yld  <-  predict(model.asreml.yld, classify = "HYB", sed = TRUE)
+weed.pv.yld  <- predict(model.asreml.yld, classify = "WEED", sed = TRUE)
+all.pv.yld   <- predict(model.asreml.yld, classify = "LOC:NITRO:HYB:WEED", sed = TRUE)
+
+Estimates <- all.pv.yld$pvals
+Estimates$YLD <- as.numeric(Estimates$predicted.value)
+Estimates$YLD_sd <- as.numeric(Estimates$std.error)
+
+
+
+#2.  Root complexity estimates
+model.asreml.fdt <- asreml(fixed = FDT ~ NITRO + HYB + NITRO:HYB + WEED + NITRO:WEED + HYB:WEED + NITRO:HYB:WEED,
+                       random = ~ YEAR + LOC + REP + YEAR:LOC:REP,
+                       residual = ~units,
+                       data = Compiled)
+plot(model.asreml.fdt)
+
+summary(model.asreml.fdt)$varcomp
+
+wald(model.asreml.fdt)
+
+model.wld.fdt <- wald(model.asreml.fdt, denDF = "default")
+model.wld.fdt$Wald
+model.wld.fdt$stratumVariances
+
+## Predicting Performance
+Nitro.pv.fdt <- predict(model.asreml.fdt, classify = "NITRO", sed = TRUE)
+Hyb.pv.fdt <-  predict(model.asreml.fdt, classify = "HYB", sed = TRUE)
+weed.pv.fdt <- predict(model.asreml.fdt, classify = "WEED", sed = TRUE)
+all.pv.fdt  <- predict(model.asreml.fdt, classify = "LOC:NITRO:HYB:WEED", sed = TRUE)
+
+Estimates.fdt <- all.pv.fdt$pvals
+Estimates$FDT <- as.numeric(Estimates.fdt$predicted.value)
+Estimates$FDT_sd <- as.numeric(Estimates.fdt$std.error)
+
+
+# 3.  Root angle estimates  
+model.asreml.rta <- asreml(fixed = RTA ~ NITRO + HYB + NITRO:HYB + WEED + NITRO:WEED + HYB:WEED + NITRO:HYB:WEED,
+                           random = ~ YEAR + LOC + REP + YEAR:LOC:REP,
+                           residual = ~units,
+                           data = Compiled)
+plot(model.asreml.rta)
+
+summary(model.asreml.rta)$varcomp
+
+wald(model.asreml.rta)
+
+model.wld.rta <- wald(model.asreml.rta, denDF = "default")
+model.wld.rta$Wald
+model.wld.rta$stratumVariances
+
+## Predicting Performance
+Nitro.pv.rta <-predict(model.asreml.rta, classify = "NITRO", sed = TRUE)
+Hyb.pv.rta <-  predict(model.asreml.rta, classify = "HYB", sed = TRUE)
+weed.pv.rta <- predict(model.asreml.rta, classify = "WEED", sed = TRUE)
+all.pv.rta  <- predict(model.asreml.rta, classify = "LOC:NITRO:HYB:WEED", sed = TRUE)
+
+Estimates.rta <- all.pv.rta$pvals
+
+Estimates$RTA <- as.numeric(Estimates.rta$predicted.value)
+Estimates$RTA_se <- as.numeric(Estimates.rta$std.error)
+
+
+## Bargraph for the predicted values
+library(ggplot2)
+library(ggpattern)
+ggplot(data = Estimates2, aes(x = HYB, y = pred, fill = WEED)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +
+  geom_errorbar(stat = "summary", fun.data = mean_sdl, position = position_dodge(width = 0.9), width = 0.5, size =0.7) +
+  scale_fill_manual(values = c( "#edf8b1","#7fcdbb", "#2c7fb8")) +
+  theme(panel.background = element_rect(fill = "white", colour = "black",size = 1, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "white")) +
+  coord_cartesian(ylim = c(0, 16000)) +
+  theme(line = element_line(size = 1)) +
+  theme(axis.text= element_text(angle = 90, hjust = 0.5, size=10,color="black"), axis.title = element_text(size = 18)) +
+  guides(fill = guide_legend(direction = "vertical"))+
+  labs(x = "Hybrids", y = "Predicted Yield [Bu/Acre]", cex.lab=5) 
+
+## Correlation between yield yield and root architectural traits
+#1. Root complexity with yield
+
+library(ggplot2)
+library(ggpubr) 
+ggplot(Estimates, aes(x = FDT, y = YLD, color = NITRO)) + 
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE, fullrange = TRUE) +
+  labs(x ="Root Complexity", y = "Grain Yield [Kg/Ha]", fill = "Nitrogen") + 
+  theme(panel.background = element_rect(fill = "white", colour = "black", size = 1, linetype = "solid"),
+        panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "white")) +
+  coord_cartesian(xlim = c(1.85, 1.94)) +
+  theme(axis.text = element_text(angle = 0, hjust = 0.5, size = 13, color = "black"),
+        axis.title = element_text(size = 18)) +
+  scale_y_continuous(breaks = seq(1000, 12000, by = 1000)) +
+  scale_x_continuous(breaks = seq(0.2, 1.94, by = 0.02)) +
+  guides(fill = guide_legend(direction = "vertical")) +
+  stat_cor(aes(group = LOC),method = "pearson",label.x = 1.85,label.y = 12000,color = "black",size = 4) +  # Separate correlation for each Nitro level aes(group = NITRO)
+  theme(legend.direction = "vertical")
+
+
+#2. Root angles  with yield
+ggplot(Estimates, aes(x = RTA, y = YLD, color = NITRO)) + 
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE, fullrange = TRUE) +
+  labs(x = "Root Angle [Degrees]", y = "Grain Yield [Kg/Ha]", fill = "Nitrogen") + 
+  theme(panel.background = element_rect(fill = "white", colour = "black", size = 1, linetype = "solid"),
+    panel.grid.major = element_line(size = 0.5, linetype = 'solid', color = "white")) +
+  coord_cartesian(xlim = c(63, 85)) +
+  theme(axis.text = element_text(angle = 0, hjust = 0.5, size = 13, color = "black"),
+    axis.title = element_text(size = 18)) +
+  scale_y_continuous(breaks = seq(1000, 12000, by = 1000)) +
+  scale_x_continuous(breaks = seq(10, 85, by = 5)) +
+  guides(fill = guide_legend(direction = "vertical")) +
+  stat_cor(aes(group = LOC), method = "pearson",label.x = 63,label.y = 12000,color = "black",size = 4) +  # Separate correlation for each Nitro level aes(group = NITRO)
+  theme(legend.direction = "vertical")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
